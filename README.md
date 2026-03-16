@@ -2,8 +2,6 @@
 
 A terminal greeter that displays today's entry from [The Daily Dad](https://store.dailystoic.com/products/the-daily-dad) by Ryan Holiday.
 
-![Screenshot](screenshot.png)
-
 ## Requirements
 
 - `bash`, `unzip`, `sed`, `fold` (standard on most systems)
