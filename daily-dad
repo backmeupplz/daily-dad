@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Display today's Daily Dad entry
+
+EPUB="${DAILY_DAD_EPUB:-$HOME/the-daily-dad.epub}"
+EXTRACT_DIR="/tmp/daily-dad"
+
+if [ ! -f "$EPUB" ]; then
+  echo "EPUB not found: $EPUB"
+  echo "Set DAILY_DAD_EPUB to the path of your epub file, or place it at ~/the-daily-dad.epub"
+  exit 1
+fi
+
+# Extract epub if not already done
+if [ ! -d "$EXTRACT_DIR/OEBPS" ]; then
+  mkdir -p "$EXTRACT_DIR"
+  unzip -o "$EPUB" -d "$EXTRACT_DIR" > /dev/null 2>&1
+fi
+
+# Get today's month and day
+MONTH=$(date +%B)
+DAY=$(date +%-d)
+
+# Find the matching xhtml file
+FILE=$(find "$EXTRACT_DIR/OEBPS/xhtml/" -name "*${MONTH}_${DAY}_*" | head -1)
+
+if [ -z "$FILE" ]; then
+  echo "No entry found for $MONTH $DAY"
+  exit 1
+fi
+
+# Extract title and body text, strip HTML tags, clean up whitespace
+TITLE=$(sed -n 's/.*x03-Chapter-Title[^>]*>\(.*\)<\/h2>.*/\1/p' "$FILE" | sed 's/<[^>]*>//g')
+BODY=$(sed -n 's/.*\(x03-CO-Body-Text\|x04-Body-Text\)[^>]*>\(.*\)<\/p>.*/\2/p' "$FILE" | sed 's/<[^>]*>//g' | sed 's/&#160;/ /g')
+
+# Terminal width for centering/wrapping
+COLS=$(tput cols 2>/dev/null || echo 80)
+WIDTH=68
+if [ "$COLS" -lt 76 ]; then
+  WIDTH=$((COLS - 8))
+fi
+PAD=$(( (COLS - WIDTH) / 2 ))
+PADDING=$(printf '%*s' "$PAD" '')
+
+# Colors
+DIM='\033[2m'
+BOLD='\033[1m'
+YELLOW='\033[33m'
+RESET='\033[0m'
+
+# Header
+echo ""
+LINE=$(printf '%.0s─' $(seq 1 "$WIDTH"))
+echo -e "${PADDING}${DIM}${LINE}${RESET}"
+echo ""
+echo -e "${PADDING}${DIM}The Daily Dad — $MONTH $DAY${RESET}"
+echo -e "${PADDING}${BOLD}${YELLOW}${TITLE}${RESET}"
+echo ""
+echo -e "${PADDING}${DIM}${LINE}${RESET}"
+echo ""
+
+# Body with paragraph spacing and indentation
+echo "$BODY" | while IFS= read -r para; do
+  [ -z "$para" ] && continue
+  echo "$para" | fold -s -w "$WIDTH" | while IFS= read -r line; do
+    echo -e "${PADDING}${line}"
+  done
+  echo ""
+done
+
+echo ""
+echo -e "${PADDING}${DIM}${LINE}${RESET}"
+echo ""
